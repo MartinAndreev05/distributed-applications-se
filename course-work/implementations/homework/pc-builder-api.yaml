@@ -1,0 +1,1285 @@
+openapi: 3.0.3
+
+info:
+  title: PC Builder Configurator API
+  version: 1.0.0
+  description: >
+    PC Builder Configurator е система за създаване, управление и проверка
+    на компютърни конфигурации. API-то позволява регистрация на потребители,
+    управление на хардуерни компоненти, създаване на PC билдове,
+    проверка за съвместимост между компонентите, изчисляване на препоръчителна
+    мощност на захранване и добавяне на ревюта към публични конфигурации.
+
+servers:
+  - url: https://api.pcbuilder.local/api
+    description: Local development server
+
+tags:
+  - name: Authentication
+    description: Услуги за регистрация и вход в системата
+  - name: Users
+    description: Услуги за управление на потребители
+  - name: Components
+    description: Услуги за управление на хардуерни компоненти
+  - name: Manufacturers
+    description: Услуги за управление на производители
+  - name: Builds
+    description: Услуги за създаване и управление на PC конфигурации
+  - name: Compatibility
+    description: Услуги за проверка на съвместимост
+  - name: Power
+    description: Услуги за изчисляване на мощност на захранване
+  - name: Reviews
+    description: Услуги за оценки и коментари
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Регистрация на нов потребител
+      description: Създава нов потребителски акаунт в системата.
+      requestBody:
+        required: true
+        description: Данни за регистрация на потребител
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              username: martin123
+              email: martin@example.com
+              password: StrongPass123
+      responses:
+        "201":
+          description: Потребителят е създаден успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Невалидни входни данни
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Вход в системата
+      description: Позволява на потребител да влезе в системата чрез имейл и парола.
+      requestBody:
+        required: true
+        description: Данни за вход
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: martin@example.com
+              password: StrongPass123
+      responses:
+        "200":
+          description: Успешен вход
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Грешен имейл или парола
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Връща потребител по ID
+      description: Връща информация за конкретен потребител.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Успешно намерен потребител
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "404":
+          description: Потребителят не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      tags:
+        - Users
+      summary: Редактира потребителски профил
+      description: Обновява информацията за потребител.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        description: Нови данни за потребителя
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Потребителят е обновен успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Невалидни данни
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Потребителят не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      tags:
+        - Users
+      summary: Изтрива потребител
+      description: Изтрива потребителски акаунт по зададено ID.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Потребителят е изтрит успешно
+        "404":
+          description: Потребителят не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /components:
+    get:
+      tags:
+        - Components
+      summary: Връща всички компоненти
+      description: >
+        Връща списък с хардуерни компоненти. Поддържа филтриране по категория,
+        производител, минимална цена и максимална цена.
+      parameters:
+        - name: category
+          in: query
+          required: false
+          description: Категория на компонента
+          schema:
+            $ref: "#/components/schemas/ComponentCategory"
+        - name: manufacturer
+          in: query
+          required: false
+          description: Име на производител
+          schema:
+            type: string
+            example: AMD
+        - name: minPrice
+          in: query
+          required: false
+          description: Минимална цена
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            example: 100
+        - name: maxPrice
+          in: query
+          required: false
+          description: Максимална цена
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            example: 1000
+      responses:
+        "200":
+          description: Успешно върнат списък с компоненти
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComponentResponse"
+
+    post:
+      tags:
+        - Components
+      summary: Създава нов компонент
+      description: Създава нов хардуерен компонент. Достъпно само за администратор.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: Данни за нов компонент
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateComponentRequest"
+            example:
+              name: AMD Ryzen 5 7600X
+              category: CPU
+              manufacturerId: 1
+              price: 420.50
+              socket: AM5
+              memoryType: DDR5
+              tdp: 105
+              lengthMm: null
+              wattage: null
+      responses:
+        "201":
+          description: Компонентът е създаден успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponentResponse"
+        "400":
+          description: Невалидни входни данни
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Няма права за създаване на компонент
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /components/{componentId}:
+    get:
+      tags:
+        - Components
+      summary: Връща компонент по ID
+      description: Връща детайлна информация за конкретен хардуерен компонент.
+      parameters:
+        - $ref: "#/components/parameters/ComponentId"
+      responses:
+        "200":
+          description: Успешно намерен компонент
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponentResponse"
+        "404":
+          description: Компонентът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      tags:
+        - Components
+      summary: Обновява компонент
+      description: Обновява данните за съществуващ хардуерен компонент.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ComponentId"
+      requestBody:
+        required: true
+        description: Обновени данни за компонент
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateComponentRequest"
+      responses:
+        "200":
+          description: Компонентът е обновен успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComponentResponse"
+        "400":
+          description: Невалидни данни
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Компонентът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      tags:
+        - Components
+      summary: Изтрива компонент
+      description: Изтрива хардуерен компонент. Достъпно само за администратор.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ComponentId"
+      responses:
+        "204":
+          description: Компонентът е изтрит успешно
+        "404":
+          description: Компонентът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /manufacturers:
+    get:
+      tags:
+        - Manufacturers
+      summary: Връща всички производители
+      description: Връща списък с производители на хардуер.
+      responses:
+        "200":
+          description: Успешно върнат списък с производители
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ManufacturerResponse"
+
+    post:
+      tags:
+        - Manufacturers
+      summary: Създава производител
+      description: Добавя нов производител на хардуер. Достъпно само за администратор.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: Данни за производител
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateManufacturerRequest"
+      responses:
+        "201":
+          description: Производителят е създаден успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManufacturerResponse"
+        "400":
+          description: Невалидни данни
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /builds:
+    get:
+      tags:
+        - Builds
+      summary: Връща публични PC конфигурации
+      description: Връща списък с публични PC билдове.
+      parameters:
+        - name: purpose
+          in: query
+          required: false
+          description: Предназначение на конфигурацията
+          schema:
+            $ref: "#/components/schemas/BuildPurpose"
+        - name: maxBudget
+          in: query
+          required: false
+          description: Максимален бюджет
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            example: 2500
+      responses:
+        "200":
+          description: Успешно върнат списък с билдове
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BuildResponse"
+
+    post:
+      tags:
+        - Builds
+      summary: Създава нов PC build
+      description: Създава нова компютърна конфигурация за логнат потребител.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: Данни за нов build
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBuildRequest"
+            example:
+              name: Gaming PC 2026
+              description: Конфигурация за 1440p gaming
+              purpose: GAMING
+              isPublic: true
+      responses:
+        "201":
+          description: Build-ът е създаден успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildResponse"
+        "400":
+          description: Невалидни входни данни
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /builds/{id}:
+    get:
+      tags:
+        - Builds
+      summary: Връща build по ID
+      description: Връща детайлна информация за конкретна PC конфигурация.
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+      responses:
+        "200":
+          description: Успешно намерен build
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildResponse"
+        "404":
+          description: Build-ът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      tags:
+        - Builds
+      summary: Обновява build
+      description: Обновява име, описание, предназначение или публичност на build.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+      requestBody:
+        required: true
+        description: Данни за обновяване на build
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBuildRequest"
+      responses:
+        "200":
+          description: Build-ът е обновен успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildResponse"
+        "400":
+          description: Невалидни входни данни
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Build-ът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      tags:
+        - Builds
+      summary: Изтрива build
+      description: Изтрива PC конфигурация на потребител.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+      responses:
+        "204":
+          description: Build-ът е изтрит успешно
+        "404":
+          description: Build-ът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /builds/{id}/components:
+    post:
+      tags:
+        - Builds
+      summary: Добавя компонент към build
+      description: >
+        Добавя хардуерен компонент към конкретна PC конфигурация.
+        Един build може да има само един CPU, една дънна платка, едно захранване
+        и една кутия, но може да има повече от един storage компонент.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+      requestBody:
+        required: true
+        description: ID на компонента, който ще бъде добавен
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddComponentToBuildRequest"
+            example:
+              componentId: 5
+      responses:
+        "200":
+          description: Компонентът е добавен успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildResponse"
+        "400":
+          description: Невалидна операция
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Build или компонент не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /builds/{id}/components/{componentId}:
+    delete:
+      tags:
+        - Builds
+      summary: Премахва компонент от build
+      description: Премахва избран компонент от конкретна PC конфигурация.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+        - $ref: "#/components/parameters/ComponentId"
+      responses:
+        "204":
+          description: Компонентът е премахнат успешно
+        "404":
+          description: Build или компонент не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /builds/{id}/compatibility-check:
+    post:
+      tags:
+        - Compatibility
+      summary: Проверява съвместимост на build
+      description: >
+        Проверява дали избраните компоненти в build-а са съвместими.
+        Проверяват се socket, тип RAM, мощност на захранване, размер на видеокарта,
+        форм-фактор на дънна платка и съвместимост на охлаждане.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+      responses:
+        "200":
+          description: Резултат от проверката за съвместимост
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompatibilityResponse"
+              example:
+                buildId: 1
+                isCompatible: false
+                issues:
+                  - code: CPU_SOCKET_MISMATCH
+                    message: CPU socket AM5 не съвпада с motherboard socket LGA1700.
+                  - code: PSU_TOO_WEAK
+                    message: Избраното захранване не е достатъчно.
+        "404":
+          description: Build-ът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /builds/{id}/power-estimate:
+    get:
+      tags:
+        - Power
+      summary: Изчислява препоръчителна мощност на захранване
+      description: >
+        Изчислява приблизителната консумация на компонентите и препоръчва
+        минимална мощност на PSU.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+      responses:
+        "200":
+          description: Успешно изчислена препоръчителна мощност
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PowerEstimateResponse"
+              example:
+                buildId: 1
+                estimatedConsumptionW: 430
+                recommendedPsuW: 650
+                selectedPsuW: 750
+                isSelectedPsuEnough: true
+        "404":
+          description: Build-ът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /builds/{id}/reviews:
+    get:
+      tags:
+        - Reviews
+      summary: Връща ревюта за build
+      description: Връща всички оценки и коментари към публичен build.
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+      responses:
+        "200":
+          description: Успешно върнати ревюта
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewResponse"
+        "404":
+          description: Build-ът не е намерен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      tags:
+        - Reviews
+      summary: Добавя ревю към build
+      description: Добавя оценка и коментар към публична PC конфигурация.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BuildId"
+      requestBody:
+        required: true
+        description: Данни за ревю
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewRequest"
+            example:
+              rating: 5
+              comment: Много добра конфигурация за 1440p gaming.
+      responses:
+        "201":
+          description: Ревюто е създадено успешно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewResponse"
+        "400":
+          description: Невалидни данни
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reviews/{id}:
+    delete:
+      tags:
+        - Reviews
+      summary: Изтрива ревю
+      description: Изтрива ревю. Потребител може да изтрие собствено ревю, а администратор всяко ревю.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID на ревю
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        "204":
+          description: Ревюто е изтрито успешно
+        "404":
+          description: Ревюто не е намерено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token, получен след login.
+
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: Уникално ID на потребител
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+
+    ComponentId:
+      name: componentId
+      in: path
+      required: true
+      description: Уникално ID на компонент
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+
+    BuildId:
+      name: id
+      in: path
+      required: true
+      description: Уникално ID на PC build
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          description: Потребителско име
+          example: martin123
+        email:
+          type: string
+          format: email
+          description: Валиден имейл адрес
+          example: martin@example.com
+        password:
+          type: string
+          minLength: 8
+          maxLength: 100
+          description: Парола с минимум 8 символа
+          example: StrongPass123
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: martin@example.com
+        password:
+          type: string
+          minLength: 8
+          example: StrongPass123
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token за достъп до защитени услуги
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+        user:
+          $ref: "#/components/schemas/UserResponse"
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        username:
+          type: string
+          example: martin123
+        email:
+          type: string
+          format: email
+          example: martin@example.com
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    UpdateUserRequest:
+      type: object
+      required:
+        - username
+        - email
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          example: martin_updated
+        email:
+          type: string
+          format: email
+          example: martin.new@example.com
+
+    UserRole:
+      type: string
+      description: Роля на потребителя
+      enum:
+        - USER
+        - ADMIN
+      example: USER
+
+    ComponentCategory:
+      type: string
+      description: Категория на хардуерен компонент
+      enum:
+        - CPU
+        - GPU
+        - MOTHERBOARD
+        - RAM
+        - STORAGE
+        - PSU
+        - CASE
+        - COOLER
+      example: CPU
+
+    MemoryType:
+      type: string
+      description: Тип RAM памет
+      enum:
+        - DDR4
+        - DDR5
+      example: DDR5
+
+    CreateComponentRequest:
+      type: object
+      required:
+        - name
+        - category
+        - manufacturerId
+        - price
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Име на компонента
+          example: AMD Ryzen 5 7600X
+        category:
+          $ref: "#/components/schemas/ComponentCategory"
+        manufacturerId:
+          type: integer
+          format: int32
+          minimum: 1
+          description: ID на производител
+          example: 1
+        price:
+          type: number
+          format: double
+          minimum: 0
+          description: Цена на компонента
+          example: 420.50
+        socket:
+          type: string
+          nullable: true
+          description: Socket за CPU, motherboard или cooler
+          example: AM5
+        memoryType:
+          allOf:
+            - $ref: "#/components/schemas/MemoryType"
+          nullable: true
+          description: Тип RAM памет, ако компонентът го изисква
+        tdp:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Консумация или TDP във ватове
+          example: 105
+        wattage:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Мощност на захранване, ако компонентът е PSU
+          example: 750
+        formFactor:
+          type: string
+          nullable: true
+          description: Форм-фактор, например ATX, Micro-ATX, Mini-ITX
+          example: ATX
+        lengthMm:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Дължина на компонента в милиметри, например GPU дължина
+          example: 300
+        maxGpuLengthMm:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Максимална GPU дължина, поддържана от кутията
+          example: 340
+        maxMemoryGb:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Максимален капацитет RAM, поддържан от дънната платка
+          example: 128
+
+    ComponentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        name:
+          type: string
+          example: AMD Ryzen 5 7600X
+        category:
+          $ref: "#/components/schemas/ComponentCategory"
+        manufacturer:
+          $ref: "#/components/schemas/ManufacturerResponse"
+        price:
+          type: number
+          format: double
+          example: 420.50
+        socket:
+          type: string
+          nullable: true
+          example: AM5
+        memoryType:
+          type: string
+          nullable: true
+          example: DDR5
+        tdp:
+          type: integer
+          nullable: true
+          example: 105
+        wattage:
+          type: integer
+          nullable: true
+          example: null
+        formFactor:
+          type: string
+          nullable: true
+          example: null
+        lengthMm:
+          type: integer
+          nullable: true
+          example: null
+        maxGpuLengthMm:
+          type: integer
+          nullable: true
+          example: null
+        maxMemoryGb:
+          type: integer
+          nullable: true
+          example: null
+
+    CreateManufacturerRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: Име на производител
+          example: AMD
+        website:
+          type: string
+          format: uri
+          nullable: true
+          description: Официален сайт на производителя
+          example: https://www.amd.com
+
+    ManufacturerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        name:
+          type: string
+          example: AMD
+        website:
+          type: string
+          nullable: true
+          example: https://www.amd.com
+
+    BuildPurpose:
+      type: string
+      description: Предназначение на PC конфигурацията
+      enum:
+        - GAMING
+        - WORKSTATION
+        - PROGRAMMING
+        - STREAMING
+        - OFFICE
+        - BUDGET
+      example: GAMING
+
+    CreateBuildRequest:
+      type: object
+      required:
+        - name
+        - purpose
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 80
+          description: Име на PC build
+          example: Gaming PC 2026
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Кратко описание на конфигурацията
+          example: Конфигурация за 1440p gaming.
+        purpose:
+          $ref: "#/components/schemas/BuildPurpose"
+        isPublic:
+          type: boolean
+          description: Дали build-ът е публичен
+          example: true
+
+    UpdateBuildRequest:
+      type: object
+      required:
+        - name
+        - purpose
+        - isPublic
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 80
+          example: Updated Gaming PC
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          example: Обновено описание на конфигурацията.
+        purpose:
+          $ref: "#/components/schemas/BuildPurpose"
+        isPublic:
+          type: boolean
+          example: false
+
+    AddComponentToBuildRequest:
+      type: object
+      required:
+        - componentId
+      properties:
+        componentId:
+          type: integer
+          format: int32
+          minimum: 1
+          description: ID на компонента, който се добавя
+          example: 5
+
+    BuildResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        name:
+          type: string
+          example: Gaming PC 2026
+        description:
+          type: string
+          nullable: true
+          example: Конфигурация за 1440p gaming.
+        purpose:
+          $ref: "#/components/schemas/BuildPurpose"
+        isPublic:
+          type: boolean
+          example: true
+        ownerId:
+          type: integer
+          format: int32
+          example: 1
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComponentResponse"
+        totalPrice:
+          type: number
+          format: double
+          example: 2450.99
+
+    CompatibilityResponse:
+      type: object
+      properties:
+        buildId:
+          type: integer
+          format: int32
+          example: 1
+        isCompatible:
+          type: boolean
+          description: Показва дали конфигурацията е напълно съвместима
+          example: true
+        issues:
+          type: array
+          description: Списък с открити проблеми
+          items:
+            $ref: "#/components/schemas/CompatibilityIssue"
+
+    CompatibilityIssue:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Код на проблема
+          enum:
+            - CPU_SOCKET_MISMATCH
+            - RAM_TYPE_MISMATCH
+            - PSU_TOO_WEAK
+            - GPU_TOO_LONG
+            - MOTHERBOARD_FORM_FACTOR_NOT_SUPPORTED
+            - COOLER_SOCKET_NOT_SUPPORTED
+            - STORAGE_INTERFACE_NOT_SUPPORTED
+          example: CPU_SOCKET_MISMATCH
+        message:
+          type: string
+          description: Описание на проблема
+          example: CPU socket AM5 не съвпада с motherboard socket LGA1700.
+
+    PowerEstimateResponse:
+      type: object
+      properties:
+        buildId:
+          type: integer
+          format: int32
+          example: 1
+        estimatedConsumptionW:
+          type: integer
+          description: Приблизителна консумация на конфигурацията
+          example: 430
+        recommendedPsuW:
+          type: integer
+          description: Препоръчителна мощност на захранване
+          example: 650
+        selectedPsuW:
+          type: integer
+          nullable: true
+          description: Мощност на избраното захранване
+          example: 750
+        isSelectedPsuEnough:
+          type: boolean
+          description: Дали избраното захранване е достатъчно
+          example: true
+
+    CreateReviewRequest:
+      type: object
+      required:
+        - rating
+        - comment
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Оценка от 1 до 5
+          example: 5
+        comment:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Коментар към build
+          example: Много добра конфигурация за gaming.
+
+    ReviewResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        buildId:
+          type: integer
+          format: int32
+          example: 1
+        userId:
+          type: integer
+          format: int32
+          example: 2
+        username:
+          type: string
+          example: gamer123
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        comment:
+          type: string
+          example: Много добра конфигурация за 1440p gaming.
+
+    ErrorResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Invalid input data.
+        errors:
+          type: array
+          items:
+            type: string
+          example:
+            - Price must be greater than or equal to 0.
+            - Category is required.
